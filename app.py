@@ -8,9 +8,9 @@ from bson import ObjectId
 from datetime import datetime
 from dotenv import load_dotenv
 import os
-
 from fastapi.middleware.cors import CORSMiddleware
 
+load_dotenv()
 app = FastAPI()
 
 origins = [ "https://ecse3038-lab3-tester.netlify.app" ]
@@ -22,10 +22,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-load_dotenv()
-
-app = FastAPI()
 
 connection = motor.motor_asyncio.AsyncIOMotorClient(os.getenv("MONGODB_URL"))
 people_db = connection.people
@@ -89,12 +85,13 @@ async def create_tank(tank_request: Tank):
     json_updated_tank = jsonable_encoder(tank_new)
     return JSONResponse(json_updated_tank,status_code=201)
 
-@app.patch("/tank/{id}")
-async def update_tank(id: str, tank_update: TankUpdate):
-    tank_dictionary = tank_update.model_dump()
-    updated_tank = await people_db["tanks"].update_one({"_id":ObjectId(id)},{"$set":tank_dictionary})
-    updated_tank = await people_db["tanks"].find_one({"_id":ObjectId(id)})
+@app.patch("/tank/{tank_id}")
+async def update_tank(tank_id: str, tank_update: TankUpdate):
+    updated_tank = await people_db["tanks"].find_one({"_id":ObjectId(tank_id)})
     if updated_tank:
+        tank_dictionary = tank_update.model_dump(exclude_unset=True)
+        updated_tank = await people_db["tanks"].update_one({"_id":ObjectId(tank_id)},{"$set":tank_dictionary})
+        updated_tank = await people_db["tanks"].find_one({"_id":ObjectId(tank_id)})
         return Tank(**updated_tank)
     raise HTTPException(status_code=404,detail="Tank not found")
     pass
